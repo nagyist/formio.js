@@ -69,8 +69,7 @@ export default class CalendarWidget extends InputWidget {
 
   /**
    * Load the timezones.
-   *
-   * @return {boolean} TRUE if the zones are loading, FALSE otherwise.
+   * @returns {boolean} TRUE if the zones are loading, FALSE otherwise.
    */
   loadZones() {
     const timezone = this.timezone;
@@ -115,8 +114,6 @@ export default class CalendarWidget extends InputWidget {
     this.settings.disableWeekends ? this.settings.disable.push(this.disableWeekends) : '';
     this.settings.disableWeekdays ? this.settings.disable.push(this.disableWeekdays) : '';
     this.settings.disableFunction ? this.settings.disable.push(this.disableFunction) : '';
-    this.settings.wasDefaultValueChanged = false;
-    this.settings.defaultValue = '';
     this.settings.manualInputValue = '';
     this.settings.isManuallyOverriddenValue = false;
     this.settings.currentValue = '';
@@ -124,17 +121,9 @@ export default class CalendarWidget extends InputWidget {
     this.settings.dateFormat = convertFormatToFlatpickr(this.settings.dateFormat);
     this.settings.position = 'auto center';
     this.settings.onChange = () => {
-      if (this.settings.allowInput) {
-        if (this.settings.isManuallyOverriddenValue && this.settings.enableTime) {
-          this.calendar._input.value = this.settings.manualInputValue;
-        }
-        else {
-          this.settings.manualInputValue = '';
-        }
-
-        this.settings.isManuallyOverriddenValue = false;
+      if (this.settings.allowInput && this.settings.enableTime) {
+        this.calendar._input.value = this.settings.isManuallyOverriddenValue ? this.settings.manualInputValue : this.calendar.altInput.value;
       }
-
       this.emit('update');
     };
     this.settings.onOpen = () => this.hook('onCalendarOpen');
@@ -143,22 +132,17 @@ export default class CalendarWidget extends InputWidget {
       this.closedOn = Date.now();
 
       if (this.settings.allowInput && this.settings.enableTime) {
-        this.calendar._input.value = this.settings.manualInputValue || this.calendar._input.value;
-        this.settings.isManuallyOverriddenValue = false;
-        this.emit('update');
+          this.calendar._input.value  = this.settings.isManuallyOverriddenValue ? this.settings.manualInputValue : this.calendar.altInput.value;
+          this.emit('update');
       }
 
-      if (this.settings.wasDefaultValueChanged) {
-        this.calendar._input.value = this.settings.defaultValue;
-        this.settings.wasDefaultValueChanged = false;
-      }
       if (this.calendar) {
         this.emit('blur');
       }
     };
 
     Formio.requireLibrary('flatpickr-css', 'flatpickr', [
-      { type: 'styles', src: `${Formio.cdn['flatpickr-formio']}/flatpickr.min.css` }
+      { type: 'styles', src: `${Formio.cdn['flatpickr']}/flatpickr.min.css` }
     ], true);
 
     if (this.component.shortcutButtons) {
@@ -180,7 +164,7 @@ export default class CalendarWidget extends InputWidget {
         }
       })
       .then((ShortcutButtonsPlugin) => {
-        return Formio.requireLibrary('flatpickr', 'flatpickr', `${Formio.cdn['flatpickr-formio']}/flatpickr.min.js`, true)
+        return Formio.requireLibrary('flatpickr', 'flatpickr', `${Formio.cdn['flatpickr']}/flatpickr.min.js`, true)
           .then((Flatpickr) => {
             if (this.component.shortcutButtons?.length && ShortcutButtonsPlugin) {
               this.initShortcutButtonsPlugin(ShortcutButtonsPlugin);
@@ -194,8 +178,8 @@ export default class CalendarWidget extends InputWidget {
               if (locale && locale.length >= 2 && locale !== 'en') {
                 return Formio.requireLibrary(
                   `flatpickr-${locale}`,
-                  `flatpickr-${locale}`,
-                  `${Formio.cdn['flatpickr-formio']}/l10n/flatpickr-${locale}.js`,
+                  `flatpickr.l10ns.${locale}`,
+                  `${Formio.cdn['flatpickr']}/l10n/${locale}.js`,
                   true).then(() => this.initFlatpickr(Flatpickr));
               }
               else {
@@ -308,11 +292,11 @@ export default class CalendarWidget extends InputWidget {
   }
 
   /**
-   * Return the date value.
-   *
-   * @param date
-   * @param format
-   * @return {string}
+   * Return the date value as a string.
+   * @param {string|Date} date - The date object or a date string that is momentjs compatible.
+   * @param {string} format - The DateParser code format.
+   * @param {boolean} [useTimezone] - If the timezone should be used.
+   * @returns {string} - Returns the formatted date string.
    */
   getDateValue(date, format, useTimezone) {
     if (useTimezone) {
@@ -323,8 +307,7 @@ export default class CalendarWidget extends InputWidget {
 
   /**
    * Return the value of the selected date.
-   *
-   * @return {*}
+   * @returns {*} - The value of the selected date.
    */
   getValue() {
     // Standard output format.
@@ -351,8 +334,8 @@ export default class CalendarWidget extends InputWidget {
 
   /**
    * Set the selected date value.
-   *
-   * @param value
+   * @param {*} value - The value to set.
+   * @returns {void}
    */
   setValue(value) {
     const saveAsText = (this.settings.saveAs === 'text');
@@ -402,7 +385,8 @@ export default class CalendarWidget extends InputWidget {
     }
   }
 
-  validationValue(value) {
+  get validationValue() {
+    const value = this.dataValue;
     if (typeof value === 'string') {
       return new Date(value);
     }
@@ -424,23 +408,30 @@ export default class CalendarWidget extends InputWidget {
   initFlatpickr(Flatpickr) {
     // Create a new flatpickr.
     this.calendar = new Flatpickr(this._input, { ...this.settings, disableMobile: true });
-    this.calendar.altInput.addEventListener('input', (event) => {
+    this.addEventListener(this.calendar.altInput, 'input', (event) => {
       if (this.settings.allowInput && this.settings.currentValue !== event.target.value) {
+        if(event.target.mask) {
+          event.target.mask.textMaskInputElement.update();
+        }
         this.settings.manualInputValue = event.target.value;
+        this._input.value = this.settings.manualInputValue;
         this.settings.isManuallyOverriddenValue = true;
         this.settings.currentValue = event.target.value;
-      }
-
-      if (event.target.value === '' && this.calendar.selectedDates.length > 0) {
-        this.settings.wasDefaultValueChanged = true;
-        this.settings.defaultValue = event.target.value;
-        this.calendar.clear();
-      }
-      else {
-        this.settings.wasDefaultValueChanged = false;
+        this.emit('update');
       }
     });
-
+    if(this.calendar.daysContainer) {
+      this.calendar.daysContainer.addEventListener('click', () => {
+        this.settings.isManuallyOverriddenValue = false;
+        this.calendar.updateValue(false);
+      });
+    }
+    if(this.calendar.timeContainer){
+      this.calendar.timeContainer.addEventListener('click', () => {
+        this.settings.isManuallyOverriddenValue = false;
+        this.calendar.updateValue(false);
+      });
+    }
     const excludedFromMaskFormats = ['MMMM'];
 
     if (!this.settings.readOnly && !_.some(excludedFromMaskFormats, format => _.includes(this.settings.format, format))) {
@@ -473,6 +464,10 @@ export default class CalendarWidget extends InputWidget {
     }
     // Make sure we commit the value after a blur event occurs.
     this.addEventListener(this.calendar._input, 'blur', (event) => {
+      // If we have manually overridden the value then we shouldn't call setDate because this will fill the input mask
+      if (this.settings.isManuallyOverriddenValue){
+        return;
+      }
       const activeElement = this.settings.shadowRoot ? this.settings.shadowRoot.activeElement : document.activeElement;
       const relatedTarget = event.relatedTarget ? event.relatedTarget : activeElement;
 
@@ -497,6 +492,15 @@ export default class CalendarWidget extends InputWidget {
         }
       }
     });
+
+    // If other fields are used to calculate disabled dates, we need to redraw calendar to refresh disabled dates
+    if (this.settings.disableFunction && this.componentInstance && this.componentInstance.root) {
+      this.componentInstance.root.on('change', (e) => {
+        if (e.changed && this.calendar) {
+          this.calendar.redraw();
+        }
+      });
+    }
 
     // Restore the calendar value from the component value.
     this.setValue(this.componentValue);
