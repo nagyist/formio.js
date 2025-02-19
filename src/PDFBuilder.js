@@ -218,10 +218,10 @@ export default class PDFBuilder extends WebformBuilder {
         const progress = Math.floor((event.loaded / event.total) * 100);
         this.refs.uploadProgress.style.width = `${progress}%`;
         if (progress > 98) {
-          this.refs.uploadProgress.innerHTML = this.t('Converting PDF. Please wait.');
+          this.refs.uploadProgress.innerHTML = this.t('waitPdfConverting');
         }
         else {
-          this.refs.uploadProgress.innerHTML = `${this.t('Uploading')} ${progress}%`;
+          this.refs.uploadProgress.innerHTML = `${this.t('uploading')} ${progress}%`;
         }
       }
     }, `${this.projectUrl}/upload`, {}, 'file')
@@ -263,7 +263,7 @@ export default class PDFBuilder extends WebformBuilder {
       return;
     }
     this.refs.uploadError.style.display = message ? '' : 'none';
-    this.refs.uploadError.innerHTML = message;
+    this.refs.uploadError.innerHTML = this.t(`${message}`);
   }
 
   createForm(options) {
@@ -478,7 +478,7 @@ export default class PDFBuilder extends WebformBuilder {
     }
 
     // Set a unique key for this component.
-    BuilderUtils.uniquify([this.webform._form], schema);
+    BuilderUtils.uniquify(this.webform._form?.components || [], schema);
     this.webform._form.components.push(schema);
 
     schema.overlay = {
@@ -522,7 +522,7 @@ export default class PDFBuilder extends WebformBuilder {
           name: 'showBuilderErrors',
           data: {
             compId: comp.component.id,
-            errorMessage: `API Key is not unique: ${comp.key}`,
+            errorMessage: `${this.t('notUniqueKey')}: ${comp.key}`,
           }
         });
       }

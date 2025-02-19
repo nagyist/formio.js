@@ -6,8 +6,8 @@ const concat = require('gulp-concat');
 const replace = require('gulp-replace');
 const rename = require('gulp-rename');
 const cleanCSS = require('gulp-clean-css');
-const eslint = require('gulp-eslint');
 const clean = require('gulp-clean');
+const packageJson = require('./package.json');
 
 // Clean lib folder.
 gulp.task('clean:dist', () => {
@@ -18,18 +18,16 @@ gulp.task('clean:lib', () => {
 });
 gulp.task('clean', gulp.parallel('clean:dist', 'clean:lib'));
 
-// ESLint
-gulp.task('eslint', function eslintTask() {
-  return gulp.src(['./src/**/*.js', '!./src/**/*.spec.js'])
-    .pipe(eslint())
-    .pipe(eslint.format())
-    .pipe(eslint.failAfterError());
-});
-
 // Move font-awesome fonts into dist folder.
 gulp.task('builder-fonts', function builderFonts() {
   return gulp.src('./node_modules/bootstrap-icons/font/fonts/*').pipe(gulp.dest('dist/fonts'));
 });
+
+gulp.task('version', () => {
+  return gulp.src(['./lib/**/Formio.js', './lib/**/Embed.js'])
+    .pipe(replace('FORMIO_VERSION', packageJson.version))
+    .pipe(gulp.dest('lib'));
+})
 
 // Generate styles
 const compileStyles = (styles, file) => {

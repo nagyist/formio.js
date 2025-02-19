@@ -106,7 +106,7 @@ export default class WizardBuilder extends WebformBuilder {
     return (pages && (pages.length >= this.page)) ? pages[this.page] : null;
   }
 
-  set form(value) {
+  setForm(value) {
     this._form = value;
     if (!this._form.components || !Array.isArray(this._form.components)) {
       this._form.components = [];
@@ -122,6 +122,10 @@ export default class WizardBuilder extends WebformBuilder {
       this._form.components = components;
     }
     this.rebuild();
+  }
+
+  set form(value) {
+    this.setForm(value);
   }
 
   get form() {
@@ -256,7 +260,7 @@ export default class WizardBuilder extends WebformBuilder {
     const isSiblingAnAddPageButton = sibling?.classList.contains('wizard-add-page');
     // We still can paste before Add Page button
     if (!element.dragInfo || (sibling && !sibling.dragInfo && !isSiblingAnAddPageButton)) {
-      console.warn('There is no Drag Info available for either dragged or sibling element');
+      console.warn(this.t('noDragInfoError'));
       return;
     }
     const oldPosition = element.dragInfo.index;

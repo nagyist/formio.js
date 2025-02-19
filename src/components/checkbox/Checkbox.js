@@ -133,7 +133,7 @@ export default class CheckBoxComponent extends Field {
   }
 
   get emptyValue() {
-    return this.component.inputType === 'radio' ? null : false;
+    return this.component.inputType === 'radio' ? '' : false;
   }
 
   isEmpty(value = this.dataValue) {
@@ -202,17 +202,8 @@ export default class CheckBoxComponent extends Field {
   }
 
   setValue(value, flags = {}) {
-    if (
-      this.setCheckedState(value) !== undefined ||
-      (!this.input && value !== undefined && (this.visible || this.conditionallyVisible() || !this.component.clearOnHide))
-    ) {
-      const changed = this.updateValue(value, flags);
-      if (this.isHtmlRenderMode() && flags && flags.fromSubmission && changed) {
-        this.redraw();
-      }
-      return changed;
-    }
-    return false;
+    this.setCheckedState(value);
+    return super.setValue(value, flags);
   }
 
   getValueAsString(value) {
@@ -222,7 +213,7 @@ export default class CheckBoxComponent extends Field {
       return '';
     }
 
-    return this.t(hasValue ? 'Yes' : 'No');
+    return this.t(hasValue ? 'yes' : 'no');
   }
 
   updateValue(value, flags) {
