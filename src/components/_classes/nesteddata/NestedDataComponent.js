@@ -29,6 +29,10 @@ export default class NestedDataComponent extends NestedComponent {
     return {};
   }
 
+  get shouldAddDefaultValue() {
+    return !this.options.noDefaults || !this.options.server;
+  }
+
   componentContext() {
     return this.dataValue;
   }
@@ -80,7 +84,7 @@ export default class NestedDataComponent extends NestedComponent {
 
     const htmlTagRegExp = new RegExp('<(.*?)>');
 
-    this.components.forEach((component) => {
+    this.everyComponent((component) => {
       if (component.isInputComponent && component.visible && !component.skipInEmail) {
         const componentValue = component.getView(component.dataValue, options);
         result += (`
@@ -106,7 +110,7 @@ export default class NestedDataComponent extends NestedComponent {
     return result;
   }
 
-  everyComponent(fn, options) {
+  everyComponent(fn, options = {}) {
     if (options?.email) {
       if (options.fromRoot) {
         delete options.fromRoot;
@@ -121,8 +125,7 @@ export default class NestedDataComponent extends NestedComponent {
 
   /**
    * Get the value of this component.
-   *
-   * @returns {*}
+   * @returns {any} - Return the value of this component.
    */
   getValue() {
     return this.dataValue;
