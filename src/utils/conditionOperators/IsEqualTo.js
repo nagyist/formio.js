@@ -1,6 +1,6 @@
 import ConditionOperator from './ConditionOperator';
 import _ from 'lodash';
-import { getItemTemplateKeys, isSelectResourceWithObjectValue } from '../utils';
+import { compareSelectResourceWithObjectTypeValues, isSelectResourceWithObjectValue } from '../utils';
 
 export default class IsEqualTo extends ConditionOperator {
     static get operatorKey() {
@@ -11,8 +11,8 @@ export default class IsEqualTo extends ConditionOperator {
         return 'Is Equal To';
     }
 
-    execute({ value, comparedValue, instance, conditionComponentPath }) {
-        if (value && comparedValue && typeof value !== typeof comparedValue && _.isString(comparedValue)) {
+    execute({ value, comparedValue, instance, path }) {
+        if ((value || value === false) && comparedValue && typeof value !== typeof comparedValue && _.isString(comparedValue)) {
             try {
                 comparedValue = JSON.parse(comparedValue);
             }
@@ -20,26 +20,15 @@ export default class IsEqualTo extends ConditionOperator {
             catch (e) {}
         }
 
-        if (instance && instance.root) {
-            const conditionTriggerComponent = instance.root.getComponent(conditionComponentPath);
+        if (instance?.root?.getComponent) {
+            const conditionTriggerComponent = instance.root.getComponent(path);
 
             if (
                 conditionTriggerComponent
                 && isSelectResourceWithObjectValue(conditionTriggerComponent.component)
                 && conditionTriggerComponent.component?.template
             ) {
-                if (!value || !_.isPlainObject(value)) {
-                    return false;
-                }
-
-                const { template, valueProperty } = conditionTriggerComponent.component;
-
-                if (valueProperty === 'data') {
-                    value = { data: value };
-                    comparedValue = { data: comparedValue };
-                }
-
-                return _.every(getItemTemplateKeys(template) || [], k => _.isEqual(_.get(value, k), _.get(comparedValue, k)));
+                return compareSelectResourceWithObjectTypeValues(value, comparedValue, conditionTriggerComponent.component);
             }
         }
 

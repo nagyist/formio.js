@@ -214,7 +214,7 @@ export default class ButtonComponent extends Field {
       const isSilent = flags && flags.silent;
       //check root validity only if disableOnInvalid is set and when it is not possible to make submission because of validation errors
       if (flags && flags.noValidate && (this.component.disableOnInvalid || this.hasError)) {
-        isValid = flags.rootValidity || (this.root ? this.root.checkValidity(this.root.data, null, null, true) : true);
+        isValid = flags.rootValidity || (this.root ? (this.root.validate(this.root.data, { dirty: false, silentCheck: true }).length === 0) : true);
         flags.rootValidity = isValid;
       }
       this.isDisabledOnInvalid = this.component.disableOnInvalid && (isSilent || !isValid);
@@ -253,6 +253,11 @@ export default class ButtonComponent extends Field {
     this.disabled = this.shouldDisabled;
     this.setDisabled(this.refs.button, this.disabled);
 
+    /**
+     * Get url parameter by name
+     * @param {string} name - The url parameter
+     * @returns {string} - The url parameter value
+     */
     function getUrlParameter(name) {
       name = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
       const regex = new RegExp(`[\\?&]${name}=([^&#]*)`);
@@ -297,7 +302,7 @@ export default class ButtonComponent extends Field {
   }
 
   onClick(event) {
-    this.triggerReCaptcha();
+    this.triggerCaptcha();
     // Don't click if disabled or in builder mode.
     if (this.disabled || this.options.attachMode === 'builder') {
       return;
@@ -313,6 +318,7 @@ export default class ButtonComponent extends Field {
         event.stopPropagation();
         this.loading = true;
         this.emit('submitButton', {
+          noValidate: this.component.state === 'draft',
           state: this.component.state || 'submitted',
           component: this.component,
           instance: this
@@ -369,19 +375,19 @@ export default class ButtonComponent extends Field {
         break;
       case 'oauth':
         if (this.root === this) {
-          console.warn('You must add the OAuth button to a form for it to function properly');
+          console.warn(this.t('noOAuthBtn'));
           return;
         }
 
         // Display Alert if OAuth config is missing
         if (!this.oauthConfig) {
-          this.root.setAlert('danger', 'OAuth not configured. You must configure oauth for your project before it will work.');
+          this.root.setAlert('danger', this.t('noOAuthConfiguration'));
           break;
         }
 
         // Display Alert if oAuth has an error is missing
         if (this.oauthConfig.error) {
-          this.root.setAlert('danger', `The Following Error Has Occured ${this.oauthConfig.error}`);
+          this.root.setAlert('danger', `${this.t('oAuthErrorsTitle')} ${this.t(this.oauthConfig.error)}`);
           break;
         }
 
@@ -393,7 +399,7 @@ export default class ButtonComponent extends Field {
 
   openOauth(settings) {
     if (!this.root.formio) {
-      console.warn('You must attach a Form API url to your form in order to use OAuth buttons.');
+      console.warn(this.t('noOAuthFormUrl'));
       return;
     }
 
@@ -402,9 +408,16 @@ export default class ButtonComponent extends Field {
       response_type: 'code',
       client_id: settings.clientId,
       redirect_uri: (settings.redirectURI && this.interpolate(settings.redirectURI)) || window.location.origin || `${window.location.protocol}//${window.location.host}`,
-      state: settings.state,
       scope: settings.scope
     };
+    if (settings.state) {
+      params.state = settings.state;
+    }
+    else if (settings.code_challenge) {
+      params.code_challenge = settings.code_challenge;
+      params.code_challenge_method = 'S256';
+    }
+
     /*eslint-enable camelcase */
 
     // Needs for the correct redirection URI for the OpenID
@@ -441,7 +454,7 @@ export default class ButtonComponent extends Field {
           }
           // TODO: check for error response here
           if (settings.state !== params.state) {
-            this.root.setAlert('danger', 'OAuth state does not match. Please try logging in again.');
+            this.root.setAlert('danger', this.t('oAuthStateError'));
             return;
           }
           // Depending on where the settings came from, submit to either the submission endpoint (old) or oauth endpoint (new).
@@ -477,7 +490,7 @@ export default class ButtonComponent extends Field {
       }
       catch (error) {
         if (error.name !== 'SecurityError' && (error.name !== 'Error' || error.message !== 'Permission denied')) {
-          this.root.setAlert('danger', error.message || error);
+          this.root.setAlert('danger', this.t(`${error.message || error}`));
         }
       }
       if (!popup || popup.closed || popup.closed === undefined) {
@@ -497,23 +510,23 @@ export default class ButtonComponent extends Field {
     }
   }
 
-  triggerReCaptcha() {
+  triggerCaptcha() {
     if (!this.root) {
       return;
     }
 
-    let recaptchaComponent;
+    let captchaComponent;
 
     this.root.everyComponent((component)=> {
-      if ( component.component.type === 'recaptcha' &&
+      if (/^(re)?captcha$/.test(component.component.type) &&
         component.component.eventType === 'buttonClick' &&
         component.component.buttonKey === this.component.key) {
-          recaptchaComponent = component;
+          captchaComponent = component;
         }
     });
 
-    if (recaptchaComponent) {
-      recaptchaComponent.verify(`${this.component.key}Click`);
+    if (captchaComponent) {
+      captchaComponent.verify(`${this.component.key}Click`);
     }
   }
 }

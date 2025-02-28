@@ -79,7 +79,7 @@ export default class DataMapComponent extends DataGridComponent {
   get dataValue() {
     if (
       !this.key ||
-      (!this.visible && this.component.clearOnHide)
+      (this.conditionallyHidden && this.component.clearOnHide)
     ) {
       return this.emptyValue;
     }
@@ -264,6 +264,7 @@ export default class DataMapComponent extends DataGridComponent {
     options.events = new EventEmitter();
     options.name += `[${rowIndex}]`;
     options.row = `${rowIndex}`;
+    options.rowIndex = rowIndex;
 
     const components = {};
     components['__key'] = this.createComponent(this.keySchema, options, { __key: this.builderMode ? this.defaultRowKey : key });
@@ -274,7 +275,6 @@ export default class DataMapComponent extends DataGridComponent {
       delete dataValue[key];
       const comp = components[this.valueKey];
       comp.component.key = newKey;
-      comp.path = this.calculateComponentPath(comp);
       key = newKey;
     });
 
